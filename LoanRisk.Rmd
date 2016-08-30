@@ -1,0 +1,143 @@
+---
+title: "Decision Trees/ Machine Learning"
+author: "Durga Gaddam"
+date: "August 29, 2016"
+output: pdf_document
+---
+### Objective:
+The objective of the article is to identify the risk of a bank loan. In this article we will develop a credit approval model using C5.0 decision trees.
+
+
+### Decision Trees:
+
+Decision Trees is one of the most widely used Machine Learning Algorithm. 
+Terminology used in Decision Trees
+
+1) Root node- Beginning of decision tree
+2) Decision Nodes- Which help in making choices
+3) Branches- potential outcome of a decision
+4) Leaf Nodes or Terminal Nodes- Used to terminate the decision.
+
+
+Decision trees use self-learning process called Recursive Partitioning, or divide and conquer method. 
+
+
+###C5.0 Decision tree algorithm:
+
+#### Entropy:
+
+The algorithm C5.0 uses the technique called entropy, which quantifies the randomness, or disorder within a set of class values
+
+Entropy (S) = $\sum_{i=1}^c p_i log2(p_i)$
+
+####Infromation Gain
+C5.0 algorithm uses Information gain to split for the data set. The data set is divided into two parts. Split1 and Split2. This method is known as Information Gain
+
+Info Gain(F)= Entropy(S1)- Entropy(S2)
+
+Entropy (S) = $\sum_{i=1}^w Entropy(p_i)$
+
+#### Step1: Collecting the Data
+#### Step2: Exploring and preparing the Data
+#### Step3: Training the data model
+#### Step4: Evaluating the model performance
+#### Step5: Improving model performance
+
+------------------
+
+#### Step1: Collecting the Data
+
+The present data is extracted from http://archive.ics.uci.edu/ml/
+
+#### Step2: Exploring and preparing the Data
+```{r}
+##library(ggplot2)
+credit <- read.csv("credit.csv")
+str(credit)
+table(credit$checking_balance)
+table(credit$savings_balance)
+
+##Here DM indicates currency of Germany Deutsche Marks(DM)
+
+summary(credit$months_loan_duration)
+summary(credit$amount)
+
+```
+
+Through this we can observe that the minimum loan duration was 4 and maximum duration was 72
+```{r}
+require(ggplot2)
+qplot(credit$months_loan_duration, xlab="Number of Months", main = "Loan Duration",geom="histogram", binwidth=2)
+
+
+credit$default <-factor(credit$default, levels=c("1","2"), labels=c("No","Yes"))
+
+table(credit$default)
+
+
+a <- sample(1000,900)
+
+```
+The default vector in the dataset indicates the response of whether the applicant met the agreed payment terms.
+
+To prepare training data and testing data, we need to divide the data randomly 
+```{r}
+set.seed(12354)
+train_sample <- sample(1000,800)
+
+credit_train <- credit[train_sample,]
+credit_test <- credit[-train_sample,]
+
+prop.table(table(credit_train$default))
+prop.table(table(credit_test$default))
+```
+
+###Step-3 Training the data Model
+we need to remove the 21st column from the data model
+
+
+```{r}
+##install.packages("C50")
+##library(C50)
+require(C50)
+credit_model <- C5.0(credit_train[-21], credit_train$default)
+
+credit_model
+
+summary(credit_model)
+
+```
+#### Explaining the Summary of credit model:
+
+Here 800 cases were studied and the following decision were made:
+
+1) The first line in the summary indicates that if the checking balance of an individual is unknown or greater than 200 DM the classify as not likely to default. 
+2) If the checking balance is less than 0 DM or between 1 and 200 DM, then consider the given factors.
+
+### Step-4 Evaluating Model performance:
+
+```{r}
+credit_pred <- predict(credit_model, credit_test)
+
+##library(gmodels)
+require(gmodels)
+
+CrossTable(credit_test$default, credit_pred, prop.chisq= FALSE, prop.c=FALSE, prop.r=FALSE, dnn=c('actual default','predicted default' ))
+```
+### Step-5 Improving Model performance
+
+```{r}
+credit_boost10 <- C5.0(credit_train[-21], credit_train$default, trials=10)
+credit_boost10
+
+
+summary(credit_boost10)
+
+
+credit_boost10_pred <- predict(credit_boost10,credit_test)
+
+CrossTable(credit_test$default, credit_boost10_pred, prop.chisq = FALSE, prop.c=FALSE, prop.r=FALSE, dnn=c('actual default', 'predicted default') )
+CrossTable(credit_test$default, credit_pred, prop.chisq= FALSE, prop.c=FALSE, prop.r=FALSE, dnn=c('actual default','predicted default' ))
+```
+
+We can see that the model performance has been increased when increasing the number of trails.
